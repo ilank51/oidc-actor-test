@@ -1,0 +1,19 @@
+name: oidc-actor-test
+on: workflow_dispatch
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  exchange:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get GitHub ID token
+        run: |
+          ID_TOKEN=$(curl -sLS -H "User-Agent: actions/oidc-client" -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=jfrog-github" | jq -r .value)
+          echo "::add-mask::$ID_TOKEN"
+          echo "ID_TOKEN=${ID_TOKEN}" >> $GITHUB_ENV
+      - name: Exchange for JFrog access token
+        run: |
+          RESP=$(curl -s -X POST "https://eranb.jfrog.io/access/api/v1/oidc/token" -H "Content-Type: application/json" -d "{\"grant_type\":\"urn:ietf:params:oauth:grant-type:token-exchange\",\"subject_token_type\":\"urn:ietf:params:oauth:token-type:id_token\",\"subject_token\":\"${ID_TOKEN}\",\"provider_name\":\"github-actor-test\"}")
+          echo "$RESP" | jq 'if .access_token then {status: "ok", expires_in: .expires_in} else . end'
+
