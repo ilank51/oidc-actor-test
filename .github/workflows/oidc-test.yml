@@ -5,7 +5,7 @@ permissions:
   contents: read
 jobs:
   exchange:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Get GitHub ID token
         run: |
@@ -15,6 +15,6 @@ jobs:
           echo "$ID_TOKEN" | cut -d. -f2 | python3 -c "import sys,base64,json; s=sys.stdin.read().strip(); s+='='*(-len(s)%4); d=json.loads(base64.urlsafe_b64decode(s)); print({k:d.get(k) for k in ['iss','sub','aud','actor','repository']})"
       - name: Exchange for JFrog access token
         run: |
-          CODE=$(curl -s -o resp.json -w "%{http_code}" -X POST "https://eranb.jfrog.io/access/api/v1/oidc/token" -H "Content-Type: application/json" -d "{\"grant_type\":\"urn:ietf:params:oauth:grant-type:token-exchange\",\"subject_token_type\":\"urn:ietf:params:oauth:token-type:id_token\",\"subject_token\":\"${ID_TOKEN}\",\"provider_name\":\"github-actor-test\"}")
+          CODE=$(curl -s -o resp.json -w "%{http_code}" -X POST "http://localhost:12982/access/api/v1/oidc/token" -H "Content-Type: application/json" -d "{\"grant_type\":\"urn:ietf:params:oauth:grant-type:token-exchange\",\"subject_token_type\":\"urn:ietf:params:oauth:token-type:id_token\",\"subject_token\":\"${ID_TOKEN}\",\"provider_name\":\"github-actor-test\"}")
           echo "HTTP status: $CODE"
           if jq -e . resp.json >/dev/null 2>&1; then jq 'del(.access_token)' resp.json; else echo "non-JSON body (first 300 chars):"; head -c 300 resp.json; echo; fi
